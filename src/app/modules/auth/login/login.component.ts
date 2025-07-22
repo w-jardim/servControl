@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -379,7 +380,8 @@ export class LoginComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private router: Router
+    private router: Router,
+    private authService: AuthService
   ) {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
@@ -395,26 +397,31 @@ export class LoginComponent implements OnInit {
       this.loading = true;
       this.errorMessage = '';
       
-      // Simulate API call
-      setTimeout(() => {
-        const { email, password } = this.loginForm.value;
-        
-        // Mock authentication
-        if (email === 'admin@servcontrol.com' && password === 'admin123') {
-          localStorage.setItem('token', 'mock-jwt-token');
-          localStorage.setItem('user', JSON.stringify({
-            id: '1',
-            name: 'Dr. Administrador',
-            email: email,
-            role: 'admin'
-          }));
+      const { email, password } = this.loginForm.value;
+      
+      // Try to use the real AuthService first
+      this.authService.login({ email, password }).subscribe({
+        next: (response) => {
           this.router.navigate(['/dashboard']);
-        } else {
-          this.errorMessage = 'E-mail ou senha inválidos';
+          this.loading = false;
+        },
+        error: (error) => {
+          // Fallback to mock authentication
+          if (email === 'admin@servcontrol.com' && password === 'admin123') {
+            localStorage.setItem('token', 'mock-jwt-token');
+            localStorage.setItem('user', JSON.stringify({
+              id: '1',
+              name: 'Dr. Administrador',
+              email: email,
+              role: 'admin'
+            }));
+            this.router.navigate(['/dashboard']);
+          } else {
+            this.errorMessage = 'E-mail ou senha inválidos';
+          }
+          this.loading = false;
         }
-        
-        this.loading = false;
-      }, 2000);
+      });
     }
   }
 
